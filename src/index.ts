@@ -228,7 +228,7 @@ export class Client extends EventEmitter {
     }
 
     private generateRandomConnectionUrl() {
-        const knownServerIds = [1, 6, 5, 7, 8];
+        const knownServerIds = [1, 3, 6, 7, 8];
         return `wss://ws${
             knownServerIds[Math.floor(Math.random() * knownServerIds.length)]
         }.blitzortung.org:443/`;

@@ -60,3 +60,7 @@ typings/
 /dist
 
 .npmrc
+
+# compiled js files
+
+*.js

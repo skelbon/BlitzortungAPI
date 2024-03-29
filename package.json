@@ -4,9 +4,6 @@
   "description": "Simple WebSocket API for Blitzortung.de",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "dependencies": {
-    "ws": "^7.3.1"
-  },
   "engines": {
     "node": ">=10"
   },

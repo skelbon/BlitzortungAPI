@@ -1,5 +1,5 @@
-import * as WebSocket from 'ws';
-import { EventEmitter } from 'events';
+import * as WebSocket from "ws";
+import { EventEmitter } from "events";
 
 export interface SocketFactory {
     make(url: string): WebSocket;
@@ -98,7 +98,7 @@ export interface Detector {
 export interface Strike {
     location: Location;
     time: Date;
-    detectors: Detector[];
+    detectors?: Detector[];
     delay: number;
     deviation: number;
     polarity: Polarity;
@@ -109,22 +109,22 @@ export interface Strike {
 
 export class NotConnectedError extends Error {
     constructor(public readonly client: Client) {
-        super('Client not connected');
+        super("Client not connected");
     }
 }
 
 export interface Client {
-    on(event: 'data', cb: (strike: Strike) => void): this;
-    on(event: 'connect', cb: (socket: WebSocket) => void): this;
-    on(event: 'error', cb: (error: Error) => void): this;
+    on(event: "data", cb: (strike: Strike) => void): this;
+    on(event: "connect", cb: (socket: WebSocket) => void): this;
+    on(event: "error", cb: (error: Error) => void): this;
 
-    once(event: 'data', cb: (strike: Strike) => void): this;
-    once(event: 'connect', cb: (socket: WebSocket) => void): this;
-    once(event: 'error', cb: (error: Error) => void): this;
+    once(event: "data", cb: (strike: Strike) => void): this;
+    once(event: "connect", cb: (socket: WebSocket) => void): this;
+    once(event: "error", cb: (error: Error) => void): this;
 
-    addListener(event: 'data', cb: (strike: Strike) => void): this;
-    addListener(event: 'connect', cb: (socket: WebSocket) => void): this;
-    addListener(event: 'error', cb: (error: Error) => void): this;
+    addListener(event: "data", cb: (strike: Strike) => void): this;
+    addListener(event: "connect", cb: (socket: WebSocket) => void): this;
+    addListener(event: "error", cb: (error: Error) => void): this;
 }
 
 export class Client extends EventEmitter {
@@ -142,17 +142,17 @@ export class Client extends EventEmitter {
      * Connects to the remote API.
      */
     public connect(url = this.generateRandomConnectionUrl()) {
-        const socket = this.socket = this.socketFactory.make(url);
-        socket.on('message', (rawData: string) => {
-            this.emit('data', this.buildStrikeData(JSON.parse(rawData)));
-        });
-        socket.on('open', () => {
-            this.sendJSON({
-                time: 0,
-            });
-            this.emit('connect', socket);
-        });
-        socket.on('error', err => this.emit('error', err));
+        const socket = (this.socket = this.socketFactory.make(url));
+        socket.onmessage = (event: WebSocket.MessageEvent) => {
+            const rawData = this.decode(event.data as string);
+
+            this.emit("data", this.buildStrikeData(JSON.parse(rawData)));
+        };
+        socket.onopen = () => {
+            this.sendJSON({ a: 111 });
+            this.emit("connect", socket);
+        };
+        socket.onerror = (err) => this.emit("error", err);
     }
 
     /**
@@ -166,7 +166,11 @@ export class Client extends EventEmitter {
         this.removeAllListeners();
     }
 
-    private processRawLocation(location: { lat: number; lon: number; alt: number }): Location {
+    private processRawLocation(location: {
+        lat: number;
+        lon: number;
+        alt: number;
+    }): Location {
         return {
             latitude: location.lat,
             longitude: location.lon,
@@ -180,7 +184,7 @@ export class Client extends EventEmitter {
             deviation: strike.mds,
             delay: strike.delay,
             time: new Date(Math.floor(strike.time / 1e6)),
-            detectors: strike.sig.map(rawDec => ({
+            detectors: strike.sig.map((rawDec) => ({
                 id: rawDec.sta,
                 location: this.processRawLocation(rawDec),
                 status: rawDec.status,
@@ -189,8 +193,34 @@ export class Client extends EventEmitter {
             polarity: strike.pol > 0 ? Polarity.Positive : Polarity.Negative,
             maxDeviation: strike.mds,
             maxCircularGap: strike.mcg,
-            region: 1 <= strike.region && strike.region <= 5 ? <Region>strike.region : Region.Unknown,
+            region:
+                1 <= strike.region && strike.region <= 5
+                    ? <Region>strike.region
+                    : Region.Unknown,
+        };
+    }
+
+    private decode(b: string): string {
+        let a: string,
+            e: { [key: number]: string } = {},
+            d: string[] = b.split(""),
+            c: string = d[0],
+            f: string = c,
+            g: string[] = [c],
+            h: number = 256,
+            o: number = h;
+
+        for (let i = 1; i < d.length; i++) {
+            let charCode = d[i].charCodeAt(0);
+            a = h > charCode ? d[i] : e[charCode] ? e[charCode] : f + c;
+            g.push(a);
+            c = a.charAt(0);
+            e[o] = f + c;
+            o++;
+            f = a;
         }
+
+        return g.join("");
     }
 
     private sendJSON(data: any) {
@@ -198,7 +228,9 @@ export class Client extends EventEmitter {
     }
 
     private generateRandomConnectionUrl() {
-        const knownServerIds = [1, 6, 5, 7];
-        return `wss://ws${knownServerIds[Math.floor(Math.random() * knownServerIds.length)]}.blitzortung.org:3000/`;
+        const knownServerIds = [1, 6, 5, 7, 8];
+        return `wss://ws${
+            knownServerIds[Math.floor(Math.random() * knownServerIds.length)]
+        }.blitzortung.org:443/`;
     }
 }
